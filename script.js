@@ -1,38 +1,25 @@
 /* ============================================================
+   SUPABASE CONFIG  (paste your own values)
+   Project Settings -> API: "Project URL" and the anon/publishable key.
+   NEVER put the service_role key here.
+   ============================================================ */
+const SUPABASE_URL = 'https://itftrzhiosaksvngikwh.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_tsjOfM_rGn-VE3vqOMvElg_QDq_qrC4';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ============================================================
    APPLICATION STATE
    ============================================================ */
 const APP = {
-  // Registered admin accounts (demo: stored in-memory)
-  users: [
-    {
-      name: 'System Admin',
-      email: 'admin@school.edu',
-      password: 'admin123',
-      role: 'admin'
-    }
-  ],
-
-  // Student register (demo: stored in-memory)
-  students: [
-    { id: 'STU-001', name: 'Emma Johnson',     className: 'Form 1A', present: true  },
-    { id: 'STU-002', name: 'Liam Chen',        className: 'Form 1A', present: false },
-    { id: 'STU-003', name: 'Sophia Rodriguez', className: 'Form 1B', present: true  },
-    { id: 'STU-004', name: 'Noah Williams',    className: 'Form 2A', present: false },
-    { id: 'STU-005', name: 'Olivia Brown',     className: 'Form 2A', present: true  },
-    { id: 'STU-006', name: 'Ethan Davis',      className: 'Form 2B', present: true  }
-  ],
-
-  // Currently logged-in user
-  currentUser: null,
-
-  // Search filter for student table
+  students: [],        // loaded from Supabase
+  currentUser: null,   // { id, email, name, role }
   searchFilter: ''
 };
 
 /* ============================================================
    ELEMENT REFERENCES
    ============================================================ */
-// Auth
 const authWrapper       = document.getElementById('authWrapper');
 const loginCard         = document.getElementById('loginCard');
 const registerCard      = document.getElementById('registerCard');
@@ -44,7 +31,6 @@ const registerSuccess   = document.getElementById('registerSuccess');
 const goRegister        = document.getElementById('goRegister');
 const goLogin           = document.getElementById('goLogin');
 
-// Dashboard
 const dashboard         = document.getElementById('dashboard');
 const currentUserName   = document.getElementById('currentUserName');
 const currentUserRole   = document.getElementById('currentUserRole');
@@ -62,19 +48,14 @@ const studentSearch     = document.getElementById('studentSearch');
 /* ============================================================
    HELPERS
    ============================================================ */
-function showAlert(el, message) {
+function showAlert(el, message, ms = 4000) {
   el.textContent = message;
   el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 4000);
+  setTimeout(() => el.classList.remove('show'), ms);
 }
 
 function getInitials(name) {
-  return name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 }
 
 function escapeHtml(str) {
@@ -83,125 +64,174 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function setBusy(form, busy) {
+  const btn = form.querySelector('button[type="submit"]');
+  if (btn) btn.disabled = busy;
+}
+
 /* ============================================================
    AUTH: SWITCH BETWEEN LOGIN / REGISTER
    ============================================================ */
-goRegister.addEventListener('click', () => {
-  loginCard.classList.remove('active');
-  registerCard.classList.add('active');
+function showCard(which) {
+  loginCard.classList.toggle('active', which === 'login');
+  registerCard.classList.toggle('active', which === 'register');
   loginError.classList.remove('show');
   registerError.classList.remove('show');
   registerSuccess.classList.remove('show');
-});
+}
 
-goLogin.addEventListener('click', () => {
-  registerCard.classList.remove('active');
-  loginCard.classList.add('active');
-  loginError.classList.remove('show');
-  registerError.classList.remove('show');
-  registerSuccess.classList.remove('show');
-});
+goRegister.addEventListener('click', () => showCard('register'));
+goLogin.addEventListener('click', () => showCard('login'));
 
 /* ============================================================
    AUTH: LOGIN
    ============================================================ */
-loginForm.addEventListener('submit', (e) => {
+loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  setBusy(loginForm, true);
 
   const email    = document.getElementById('loginEmail').value.trim().toLowerCase();
   const password = document.getElementById('loginPassword').value;
 
-  const user = APP.users.find(
-    u => u.email.toLowerCase() === email && u.password === password
-  );
+  const { error } = await sb.auth.signInWithPassword({ email, password });
 
-  if (!user) {
-    showAlert(loginError, '❌ Invalid email or password. Please try again.');
+  if (error) {
+    showAlert(loginError, '❌ ' + error.message);
+    setBusy(loginForm, false);
     return;
   }
 
-  // Successful login
-  APP.currentUser = user;
-  loginError.classList.remove('show');
-  loginForm.reset();
-
-  showDashboard();
+  const ok = await enterDashboard();
+  if (ok) loginForm.reset();
+  setBusy(loginForm, false);
 });
 
 /* ============================================================
    AUTH: REGISTER
    ============================================================ */
-registerForm.addEventListener('submit', (e) => {
+registerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  setBusy(registerForm, true);
 
   const name     = document.getElementById('regName').value.trim();
   const email    = document.getElementById('regEmail').value.trim().toLowerCase();
   const role     = document.getElementById('regRole').value;
   const password = document.getElementById('regPassword').value;
-  const confirm  = document.getElementById('regConfirm').value;
+  const confirmPw = document.getElementById('regConfirm').value;
 
-  // Validation
-  if (password !== confirm) {
+  if (password !== confirmPw) {
     showAlert(registerError, '❌ Passwords do not match.');
+    setBusy(registerForm, false);
     return;
   }
 
-  if (APP.users.some(u => u.email.toLowerCase() === email)) {
-    showAlert(registerError, '❌ An account with this email already exists.');
+  // name + role are picked up by the database trigger to create the profile
+  const { error } = await sb.auth.signUp({
+    email,
+    password,
+    options: { data: { name, role } }
+  });
+
+  if (error) {
+    showAlert(registerError, '❌ ' + error.message);
+    setBusy(registerForm, false);
     return;
   }
 
-  // Create account
-  const newUser = { name, email, password, role };
-  APP.users.push(newUser);
-
-  registerError.classList.remove('show');
-  showAlert(registerSuccess, '✅ Account created successfully! You can now sign in.');
-
-  // Reset form and switch to login after a short delay
   registerForm.reset();
-  setTimeout(() => {
-    registerCard.classList.remove('active');
-    loginCard.classList.add('active');
-    registerSuccess.classList.remove('show');
-    // Prefill the login email for convenience
-    document.getElementById('loginEmail').value = email;
-  }, 1800);
+  showAlert(
+    registerSuccess,
+    '✅ Account created. Confirm your email if asked, then wait for an administrator to approve your account before signing in.',
+    7000
+  );
+  document.getElementById('loginEmail').value = email;
+  setBusy(registerForm, false);
+  setTimeout(() => showCard('login'), 4500);
+
+  // If email confirmation is off, signUp logs the user in; sign out so
+  // they must be approved first.
+  await sb.auth.signOut();
 });
 
 /* ============================================================
-   DASHBOARD: SHOW / HIDE
+   SESSION: ENTER / LEAVE DASHBOARD
    ============================================================ */
-function showDashboard() {
+async function enterDashboard() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return false;
+
+  const { data: profile, error } = await sb
+    .from('profiles')
+    .select('name, role, approved')
+    .eq('id', user.id)
+    .single();
+
+  if (error || !profile) {
+    await sb.auth.signOut();
+    showAlert(loginError, '❌ Could not load your profile. Please contact an administrator.');
+    return false;
+  }
+
+  if (!profile.approved) {
+    await sb.auth.signOut();
+    showAlert(loginError, '⏳ Your account is awaiting approval by an administrator.', 6000);
+    return false;
+  }
+
+  APP.currentUser = { id: user.id, email: user.email, name: profile.name, role: profile.role };
+
   authWrapper.style.display = 'none';
   dashboard.classList.add('active');
+  currentUserName.textContent = profile.name;
+  currentUserRole.textContent = profile.role;
 
-  // Display user info
-  currentUserName.textContent = APP.currentUser.name;
-  currentUserRole.textContent = APP.currentUser.role;
-
-  // Reset student form & search
   addStudentForm.reset();
   studentSearch.value = '';
   APP.searchFilter = '';
 
-  renderDashboard();
+  await loadStudents();
+  return true;
 }
 
-function hideDashboard() {
+function leaveDashboard() {
   dashboard.classList.remove('active');
   authWrapper.style.display = 'block';
-  loginCard.classList.add('active');
-  registerCard.classList.remove('active');
+  showCard('login');
   APP.currentUser = null;
+  APP.students = [];
 }
 
-logoutBtn.addEventListener('click', () => {
-  hideDashboard();
+logoutBtn.addEventListener('click', async () => {
+  await sb.auth.signOut();
+  leaveDashboard();
 });
 
 /* ============================================================
-   DASHBOARD: RENDER EVERYTHING
+   DATA: STUDENTS (Supabase)
+   ============================================================ */
+async function loadStudents() {
+  const { data, error } = await sb
+    .from('students')
+    .select('id, student_id, name, class_name, present')
+    .order('name', { ascending: true });
+
+  if (error) {
+    showAlert(addError, '❌ Could not load students: ' + error.message);
+    return;
+  }
+
+  APP.students = data.map(r => ({
+    uuid: r.id,
+    id: r.student_id,
+    name: r.name,
+    className: r.class_name,
+    present: r.present
+  }));
+  renderDashboard();
+}
+
+/* ============================================================
+   DASHBOARD: RENDER
    ============================================================ */
 function renderDashboard() {
   renderStats();
@@ -250,17 +280,17 @@ function renderStudentTable() {
     html += `
       <tr>
         <td>
-          <span class="avatar-sm">${getInitials(student.name)}</span>
+          <span class="avatar-sm">${escapeHtml(getInitials(student.name))}</span>
           ${escapeHtml(student.name)}
         </td>
         <td>${escapeHtml(student.id)}</td>
         <td>${escapeHtml(student.className)}</td>
         <td><span class="badge ${statusClass}">${statusText}</span></td>
         <td>
-          <button class="btn-toggle" data-action="toggle" data-id="${student.id}">
+          <button class="btn-toggle" data-action="toggle" data-uuid="${student.uuid}">
             ${actionLabel}
           </button>
-          <button class="btn-remove" data-action="remove" data-id="${student.id}" title="Remove student">
+          <button class="btn-remove" data-action="remove" data-uuid="${student.uuid}" title="Remove student">
             🗑️
           </button>
         </td>
@@ -271,34 +301,47 @@ function renderStudentTable() {
 }
 
 /* ============================================================
-   DASHBOARD: EVENT DELEGATION (TOGGLE / REMOVE)
+   DASHBOARD: TOGGLE / REMOVE
    ============================================================ */
-studentTableBody.addEventListener('click', (e) => {
+studentTableBody.addEventListener('click', async (e) => {
   const btn = e.target.closest('button');
   if (!btn) return;
 
   const action = btn.dataset.action;
-  const studentId = btn.dataset.id;
+  const student = APP.students.find(s => s.uuid === btn.dataset.uuid);
+  if (!student) return;
 
   if (action === 'toggle') {
-    const student = APP.students.find(s => s.id === studentId);
-    if (student) {
-      student.present = !student.present;
-      renderDashboard();
+    btn.disabled = true;
+    const { error } = await sb
+      .from('students')
+      .update({ present: !student.present })
+      .eq('id', student.uuid);
+
+    if (error) {
+      showAlert(addError, '❌ ' + error.message);
+      btn.disabled = false;
+      return;
     }
+    student.present = !student.present;
+    renderDashboard();
   }
 
   if (action === 'remove') {
-    const student = APP.students.find(s => s.id === studentId);
-    if (student && confirm(`Remove "${student.name}" from the register?`)) {
-      APP.students = APP.students.filter(s => s.id !== studentId);
-      renderDashboard();
+    if (!confirm(`Remove "${student.name}" from the register?`)) return;
+
+    const { error } = await sb.from('students').delete().eq('id', student.uuid);
+    if (error) {
+      showAlert(addError, '❌ ' + error.message);
+      return;
     }
+    APP.students = APP.students.filter(s => s.uuid !== student.uuid);
+    renderDashboard();
   }
 });
 
 /* ============================================================
-   DASHBOARD: SEARCH FILTER
+   DASHBOARD: SEARCH
    ============================================================ */
 studentSearch.addEventListener('input', (e) => {
   APP.searchFilter = e.target.value.trim();
@@ -308,42 +351,46 @@ studentSearch.addEventListener('input', (e) => {
 /* ============================================================
    DASHBOARD: ADD STUDENT
    ============================================================ */
-addStudentForm.addEventListener('submit', (e) => {
+addStudentForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  setBusy(addStudentForm, true);
 
   const name      = document.getElementById('studentName').value.trim();
   const id        = document.getElementById('studentId').value.trim().toUpperCase();
   const className = document.getElementById('studentClass').value.trim();
 
-  // Validation
   if (!name || !id || !className) {
     showAlert(addError, '❌ All fields are required.');
+    setBusy(addStudentForm, false);
     return;
   }
 
-  if (APP.students.some(s => s.id === id)) {
-    showAlert(addError, `❌ A student with ID "${id}" already exists.`);
-    return;
-  }
-
-  // Add student (defaults to absent until marked)
-  APP.students.push({
-    id,
+  const { error } = await sb.from('students').insert({
+    student_id: id,
     name,
-    className,
+    class_name: className,
     present: false
   });
 
-  addError.classList.remove('show');
+  if (error) {
+    const msg = error.code === '23505'
+      ? `A student with ID "${id}" already exists.`
+      : error.message;
+    showAlert(addError, '❌ ' + msg);
+    setBusy(addStudentForm, false);
+    return;
+  }
+
   showAlert(addSuccess, `✅ "${name}" added successfully.`);
   addStudentForm.reset();
-
-  renderDashboard();
+  await loadStudents();
+  setBusy(addStudentForm, false);
 });
 
 /* ============================================================
-   INIT
+   INIT: restore an existing session on page load
    ============================================================ */
-// Pre-fill a demo hint on the login screen
-document.getElementById('loginEmail').value = 'admin@school.edu';
-document.getElementById('loginPassword').value = 'admin123';
+(async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await enterDashboard();
+})();
