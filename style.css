@@ -1,5 +1,18 @@
 /* ============================================================
-   GLOBAL STYLES
+   TABLE OF CONTENTS
+   ------------------------------------------------------------
+   1.  Global Reset & Body
+   2.  Home / Landing Page
+   3.  Auth Screens (Login / Register)
+   4.  Admin Dashboard
+   5.  Student Auth + Student Portal
+   6.  Animations
+   7.  Responsive
+   ============================================================ */
+
+
+/* ============================================================
+   1. GLOBAL RESET & BODY
    ============================================================ */
 * {
   margin: 0;
@@ -18,12 +31,140 @@ body {
   color: #1a2b3c;
 }
 
+
 /* ============================================================
-   AUTH SCREENS (LOGIN / REGISTER)
+   2. HOME / LANDING PAGE
+   ============================================================ */
+.home-page {
+  display: none;
+  width: 100%;
+  max-width: 800px;
+  animation: fadeSlide 0.4s ease;
+}
+
+.home-page.active {
+  display: block;
+}
+
+.home-hero {
+  background: #ffffff;
+  border-radius: 2rem;
+  padding: 3rem 2.5rem;
+  text-align: center;
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.45);
+}
+
+.home-logo {
+  font-size: 3.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.home-hero h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #0f2b44;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.home-tagline {
+  font-size: 1rem;
+  color: #6b7c8f;
+  margin-bottom: 2.5rem;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
+
+.home-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2.5rem;
+}
+
+.feature {
+  background: #f8fafc;
+  border-radius: 1.25rem;
+  padding: 1.5rem 1.25rem;
+  border: 1px solid #e5ecf3;
+}
+
+.feature-icon {
+  font-size: 2rem;
+  margin-bottom: 0.6rem;
+}
+
+.feature h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f2b44;
+  margin-bottom: 0.35rem;
+}
+
+.feature p {
+  font-size: 0.85rem;
+  color: #6b7c8f;
+  line-height: 1.4;
+}
+
+.home-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.btn-home-primary,
+.btn-home-secondary {
+  padding: 0.95rem 2rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-home-primary {
+  background: #1e3a5f;
+  color: white;
+  box-shadow: 0 6px 14px rgba(30, 58, 95, 0.3);
+}
+
+.btn-home-primary:hover {
+  background: #0f2b44;
+}
+
+.btn-home-secondary {
+  background: #ffffff;
+  color: #1e3a5f;
+  border: 1.5px solid #1e3a5f;
+}
+
+.btn-home-secondary:hover {
+  background: #f0f5fb;
+}
+
+.home-footer-note {
+  font-size: 0.82rem;
+  color: #8b9aab;
+}
+
+
+/* ============================================================
+   3. AUTH SCREENS (LOGIN / REGISTER)
    ============================================================ */
 .auth-wrapper {
+  display: none;
   width: 100%;
   max-width: 440px;
+}
+
+.auth-wrapper.active {
+  display: block;
 }
 
 .auth-card {
@@ -32,6 +173,7 @@ body {
   padding: 2.5rem 2rem;
   box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.45);
   display: none;
+  position: relative;
   animation: fadeSlide 0.35s ease;
 }
 
@@ -39,9 +181,23 @@ body {
   display: block;
 }
 
-@keyframes fadeSlide {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+.btn-back {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  background: #f0f5fb;
+  border: none;
+  color: #1e3a5f;
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-back:hover {
+  background: #dde9f5;
 }
 
 .auth-logo {
@@ -49,6 +205,7 @@ body {
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 1.75rem;
+  margin-top: 1rem;
 }
 
 .auth-logo-icon {
@@ -60,11 +217,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
 }
 
 .auth-logo h1 {
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #0f2b44;
   line-height: 1.2;
@@ -187,8 +344,9 @@ body {
   border: 1px solid #b7e0c8;
 }
 
+
 /* ============================================================
-   DASHBOARD
+   4. ADMIN DASHBOARD
    ============================================================ */
 .dashboard {
   display: none;
@@ -281,7 +439,7 @@ body {
   background: #fbcaca;
 }
 
-/* stats cards */
+/* --- Stats --- */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -297,9 +455,9 @@ body {
   border-left: 5px solid #1e3a5f;
 }
 
-.stat-card.green  { border-left-color: #0f5c4b; }
-.stat-card.red    { border-left-color: #b91c1c; }
-.stat-card.amber  { border-left-color: #d97706; }
+.stat-card.green { border-left-color: #0f5c4b; }
+.stat-card.red   { border-left-color: #b91c1c; }
+.stat-card.amber { border-left-color: #d97706; }
 
 .stat-label {
   font-size: 0.78rem;
@@ -317,15 +475,11 @@ body {
   line-height: 1;
 }
 
-/* main panels */
+/* --- Panels --- */
 .panels {
   display: grid;
   grid-template-columns: 1fr 1.4fr;
   gap: 1.5rem;
-}
-
-@media (max-width: 900px) {
-  .panels { grid-template-columns: 1fr; }
 }
 
 .panel {
@@ -345,15 +499,11 @@ body {
   gap: 0.5rem;
 }
 
-/* add student form */
+/* --- Add Student Form --- */
 .add-form .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
-}
-
-@media (max-width: 480px) {
-  .add-form .form-row { grid-template-columns: 1fr; }
 }
 
 .btn-add {
@@ -374,7 +524,7 @@ body {
   background: #0a4236;
 }
 
-/* student table */
+/* --- Student Table --- */
 .table-scroll {
   max-height: 420px;
   overflow-y: auto;
@@ -405,7 +555,7 @@ thead th {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #4b5b6c;
-  padding: 0.75rem 0.75rem;
+  padding: 0.75rem;
   z-index: 2;
 }
 
@@ -489,7 +639,6 @@ tbody tr:hover {
   font-style: italic;
 }
 
-/* search bar in panel */
 .search-inline {
   width: 100%;
   padding: 0.7rem 1rem;
@@ -507,7 +656,208 @@ tbody tr:hover {
   background: #ffffff;
 }
 
+
+/* ============================================================
+   5. STUDENT AUTH + STUDENT PORTAL
+   ============================================================ */
+#studentAuthWrapper {
+  display: none;
+  width: 100%;
+  max-width: 440px;
+}
+
+#studentAuthWrapper.active {
+  display: block;
+}
+
+.student-portal {
+  display: none;
+  width: 100%;
+  max-width: 700px;
+  animation: fadeSlide 0.4s ease;
+}
+
+.student-portal.active {
+  display: block;
+}
+
+.student-header {
+  background: #ffffff;
+  border-radius: 1.5rem;
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.25);
+  flex-wrap: wrap;
+}
+
+.student-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.student-header-brand .brand-icon {
+  width: 48px;
+  height: 48px;
+  background: #0f5c4b;
+  color: white;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.student-header-brand h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f2b44;
+}
+
+.student-header-brand p {
+  font-size: 0.8rem;
+  color: #6b7c8f;
+}
+
+.student-profile-card {
+  background: #ffffff;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+
+.student-avatar-large {
+  width: 90px;
+  height: 90px;
+  background: #d4e1f0;
+  color: #1e3a5f;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.student-profile-card h2 {
+  font-size: 1.4rem;
+  color: #0f2b44;
+  margin-bottom: 0.25rem;
+}
+
+.student-meta {
+  font-size: 0.88rem;
+  color: #6b7c8f;
+  margin-bottom: 1.5rem;
+}
+
+.student-status-box {
+  display: inline-block;
+  padding: 1.25rem 2rem;
+  border-radius: 1.25rem;
+  margin-bottom: 1rem;
+  min-width: 220px;
+}
+
+.student-status-box.present { background: #d9f0e3; }
+.student-status-box.absent  { background: #ffe6e6; }
+
+.student-status-box .label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+  color: #4b5b6c;
+}
+
+.student-status-box .value {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.student-status-box.present .value { color: #0c5a3b; }
+.student-status-box.absent  .value { color: #b91c1c; }
+
+.student-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.student-stat {
+  background: #f8fafc;
+  border-radius: 1rem;
+  padding: 1rem;
+  text-align: center;
+  border: 1px solid #e5ecf3;
+}
+
+.student-stat .label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #6b7c8f;
+  margin-bottom: 0.3rem;
+}
+
+.student-stat .value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #0f2b44;
+}
+
+.btn-student-logout {
+  padding: 0.6rem 1.2rem;
+  background: #ffe6e6;
+  color: #b91c1c;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-student-logout:hover {
+  background: #fbcaca;
+}
+
+
+/* ============================================================
+   6. ANIMATIONS
+   ============================================================ */
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ============================================================
+   7. RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  .panels { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 800px) {
+  body { padding: 1rem; }
+}
+
 @media (max-width: 600px) {
+  .home-hero { padding: 2rem 1.5rem; }
+  .home-hero h1 { font-size: 1.7rem; }
   .dash-header { flex-direction: column; align-items: flex-start; }
   .dash-user { width: 100%; justify-content: space-between; }
+}
+
+@media (max-width: 480px) {
+  .add-form .form-row { grid-template-columns: 1fr; }
 }
