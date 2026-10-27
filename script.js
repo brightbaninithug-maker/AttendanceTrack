@@ -3,8 +3,8 @@
    Project Settings -> API: "Project URL" and the anon/publishable key.
    NEVER put the service_role key here.
    ============================================================ */
-const SUPABASE_URL = 'https://YOUR-PROJECT-ID.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR-ANON-PUBLIC-KEY';
+const SUPABASE_URL = 'https://itftrzhiosaksvngikwh.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_tsjOfM_rGn-VE3vqOMvElg_QDq_qrC4';
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
