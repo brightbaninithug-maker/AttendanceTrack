@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Management · Admin Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============================================================
+       AUTH SECTION (LOGIN + REGISTER)
+       ============================================================ -->
+  <div class="auth-wrapper" id="authWrapper">
+
+    <!-- LOGIN CARD -->
+    <div class="auth-card active" id="loginCard">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">🎓</div>
+        <div>
+          <h1>AttendTrack</h1>
+          <p>Admin Attendance Portal</p>
+        </div>
+      </div>
+
+      <h2>Welcome back</h2>
+      <p class="auth-subtitle">Sign in to manage student attendance</p>
+
+      <div class="alert alert-error" id="loginError"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginEmail">Email Address</label>
+          <input type="email" id="loginEmail" placeholder="admin@school.edu" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="Enter your password" required>
+        </div>
+        <button type="submit" class="btn-primary">Sign In</button>
+      </form>
+
+      <p class="auth-switch">
+        Need an admin account? <a id="goRegister">Register here</a>
+      </p>
+    </div>
+
+    <!-- REGISTER CARD -->
+    <div class="auth-card" id="registerCard">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">📝</div>
+        <div>
+          <h1>AttendTrack</h1>
+          <p>Admin Attendance Portal</p>
+        </div>
+      </div>
+
+      <h2>Create admin account</h2>
+      <p class="auth-subtitle">Register to manage student records</p>
+
+      <div class="alert alert-error" id="registerError"></div>
+      <div class="alert alert-success" id="registerSuccess"></div>
+
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="regName">Full Name</label>
+          <input type="text" id="regName" placeholder="e.g. Dr. Sarah Mensah" required>
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email Address</label>
+          <input type="email" id="regEmail" placeholder="admin@school.edu" required>
+        </div>
+        <div class="form-group">
+          <label for="regRole">Role</label>
+          <select id="regRole" required>
+            <option value="admin">Administrator</option>
+            <option value="principal">Principal</option>
+            <option value="registrar">Registrar</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Password</label>
+          <input type="password" id="regPassword" placeholder="Minimum 6 characters" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label for="regConfirm">Confirm Password</label>
+          <input type="password" id="regConfirm" placeholder="Re-enter password" required minlength="6">
+        </div>
+        <button type="submit" class="btn-primary">Create Account</button>
+      </form>
+
+      <p class="auth-switch">
+        Already have an account? <a id="goLogin">Sign in</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       DASHBOARD SECTION
+       ============================================================ -->
+  <div class="dashboard" id="dashboard">
+
+    <!-- Header -->
+    <div class="dash-header">
+      <div class="dash-brand">
+        <div class="dash-brand-icon">🎓</div>
+        <div>
+          <h1>AttendTrack Dashboard</h1>
+          <p>Student Attendance Management</p>
+        </div>
+      </div>
+      <div class="dash-user">
+        <div class="dash-user-info">
+          <strong id="currentUserName">—</strong>
+          <span id="currentUserRole">—</span>
+        </div>
+        <button class="btn-logout" id="logoutBtn">Log Out</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Students</div>
+        <div class="stat-value" id="statTotal">0</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Present Today</div>
+        <div class="stat-value" id="statPresent">0</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Absent Today</div>
+        <div class="stat-value" id="statAbsent">0</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-label">Attendance Rate</div>
+        <div class="stat-value" id="statRate">0%</div>
+      </div>
+    </div>
+
+    <!-- Panels -->
+    <div class="panels">
+
+      <!-- ADD STUDENT PANEL -->
+      <div class="panel">
+        <h3>➕ Add New Student</h3>
+        <div class="alert alert-success" id="addSuccess"></div>
+        <div class="alert alert-error" id="addError"></div>
+        <form class="add-form" id="addStudentForm">
+          <div class="form-group">
+            <label for="studentName">Full Name</label>
+            <input type="text" id="studentName" placeholder="e.g. Kwame Asante" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="studentId">Student ID</label>
+              <input type="text" id="studentId" placeholder="e.g. STU-009" required>
+            </div>
+            <div class="form-group">
+              <label for="studentClass">Class</label>
+              <input type="text" id="studentClass" placeholder="e.g. Form 2A" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-add">Add Student to Register</button>
+        </form>
+      </div>
+
+      <!-- STUDENT LIST PANEL -->
+      <div class="panel">
+        <h3>👥 Student Register & Attendance</h3>
+        <input type="text" class="search-inline" id="studentSearch" placeholder="🔍 Search by name, ID, or class...">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>ID</th>
+                <th>Class</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="studentTableBody">
+              <!-- filled by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
