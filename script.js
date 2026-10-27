@@ -1,17 +1,27 @@
 /* ============================================================
+   SUPABASE CONFIG  (paste your own values)
+   Project Settings -> API: "Project URL" and the anon/publishable key.
+   NEVER put the service_role key here.
+   ============================================================ */
+const SUPABASE_URL = 'https://YOUR-PROJECT-ID.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR-ANON-PUBLIC-KEY';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ============================================================
    TABLE OF CONTENTS
    ------------------------------------------------------------
-   1.  Application State (users, students, currentUser)
+   1.  Application State
    2.  DOM Element References
    3.  Utility Helpers
-   4.  Navigation (Home ↔ Auth ↔ Dashboard ↔ Student Portal)
-   5.  Admin Auth — Login
-   6.  Admin Auth — Register
-   7.  Admin Dashboard — Rendering
-   8.  Admin Dashboard — Student Table Actions
-   9.  Admin Dashboard — Add / Search / Logout
-   10. Student Auth — Login / Logout
-   11. Student Portal — Rendering
+   4.  Navigation (Home / Auth / Dashboard / Student Portal)
+   5.  Admin Auth: Login
+   6.  Admin Auth: Register
+   7.  Admin Dashboard: Data + Rendering
+   8.  Admin Dashboard: Student Table Actions
+   9.  Admin Dashboard: Add / Search / Logout
+   10. Student Auth: Login / Logout
+   11. Student Portal: Rendering
    12. Init
    ============================================================ */
 
@@ -20,33 +30,8 @@
    1. APPLICATION STATE
    ============================================================ */
 const APP = {
-  // Registered admin accounts (demo: in-memory)
-  users: [
-    {
-      name: 'System Admin',
-      email: 'admin@school.edu',
-      password: 'admin123',
-      role: 'admin'
-    }
-  ],
-
-  // Student register (demo: in-memory)
-  students: [
-    { id: 'STU-001', name: 'Emma Johnson',     className: 'Form 1A', present: true  },
-    { id: 'STU-002', name: 'Liam Chen',        className: 'Form 1A', present: false },
-    { id: 'STU-003', name: 'Sophia Rodriguez', className: 'Form 1B', present: true  },
-    { id: 'STU-004', name: 'Noah Williams',    className: 'Form 2A', present: false },
-    { id: 'STU-005', name: 'Olivia Brown',     className: 'Form 2A', present: true  },
-    { id: 'STU-006', name: 'Ethan Davis',      className: 'Form 2B', present: true  }
-  ],
-
-  // Shared school code for student login
-  schoolCode: 'SCHOOL2024',
-
-  // Currently logged-in admin
-  currentUser: null,
-
-  // Search filter for admin student table
+  students: [],        // loaded from Supabase (with today's attendance merged in)
+  currentUser: null,   // { id, email, name, role }
   searchFilter: ''
 };
 
@@ -96,26 +81,26 @@ const studentLoginError  = document.getElementById('studentLoginError');
 const backFromStudent    = document.getElementById('backFromStudent');
 
 /* --- Student Portal --- */
-const studentPortal   = document.getElementById('studentPortal');
+const studentPortal    = document.getElementById('studentPortal');
 const studentLogoutBtn = document.getElementById('studentLogoutBtn');
-const spAvatar        = document.getElementById('spAvatar');
-const spName          = document.getElementById('spName');
-const spId            = document.getElementById('spId');
-const spClass         = document.getElementById('spClass');
-const spStatusBox     = document.getElementById('spStatusBox');
-const spStatusValue   = document.getElementById('spStatusValue');
-const spTotalDays     = document.getElementById('spTotalDays');
-const spDaysPresent   = document.getElementById('spDaysPresent');
-const spPercentage    = document.getElementById('spPercentage');
+const spAvatar         = document.getElementById('spAvatar');
+const spName           = document.getElementById('spName');
+const spId             = document.getElementById('spId');
+const spClass          = document.getElementById('spClass');
+const spStatusBox      = document.getElementById('spStatusBox');
+const spStatusValue    = document.getElementById('spStatusValue');
+const spTotalDays      = document.getElementById('spTotalDays');
+const spDaysPresent    = document.getElementById('spDaysPresent');
+const spPercentage     = document.getElementById('spPercentage');
 
 
 /* ============================================================
    3. UTILITY HELPERS
    ============================================================ */
-function showAlert(el, message) {
+function showAlert(el, message, ms = 4000) {
   el.textContent = message;
   el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 4000);
+  setTimeout(() => el.classList.remove('show'), ms);
 }
 
 function getInitials(name) {
@@ -133,12 +118,20 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+/** Today's date as YYYY-MM-DD in the visitor's local time. */
+function todayStr() {
+  return new Date().toLocaleDateString('en-CA');
+}
+
+function setBusy(form, busy) {
+  const btn = form.querySelector('button[type="submit"]');
+  if (btn) btn.disabled = busy;
+}
+
 
 /* ============================================================
    4. NAVIGATION
    ============================================================ */
-
-/** Show the home/landing page. */
 function showHome() {
   homePage.classList.add('active');
   authWrapper.classList.remove('active');
@@ -148,7 +141,6 @@ function showHome() {
   APP.currentUser = null;
 }
 
-/** Show admin login or register. */
 function showAdminAuth(view = 'login') {
   homePage.classList.remove('active');
   studentAuthWrapper.classList.remove('active');
@@ -165,7 +157,6 @@ function showAdminAuth(view = 'login') {
   }
 }
 
-/** Show student login. */
 function showStudentAuth() {
   homePage.classList.remove('active');
   authWrapper.classList.remove('active');
@@ -174,7 +165,6 @@ function showStudentAuth() {
   studentAuthWrapper.classList.add('active');
 }
 
-/** Show the admin dashboard. */
 function showDashboard() {
   homePage.classList.remove('active');
   authWrapper.classList.remove('active');
@@ -188,19 +178,21 @@ function showDashboard() {
   addStudentForm.reset();
   studentSearch.value = '';
   APP.searchFilter = '';
-
-  renderDashboard();
 }
 
-/** Show the student portal. */
-function showStudentPortal(student) {
+function showStudentPortal(data) {
   studentAuthWrapper.classList.remove('active');
   studentPortal.classList.add('active');
-  renderStudentPortal(student);
+  renderStudentPortal(data);
 }
 
 /* --- Navigation button bindings --- */
-homeAdminBtn.addEventListener('click', () => showAdminAuth('login'));
+homeAdminBtn.addEventListener('click', async () => {
+  // If an approved admin session already exists, go straight in
+  const { data: { session } } = await sb.auth.getSession();
+  if (session && await enterDashboard()) return;
+  showAdminAuth('login');
+});
 homeStudentBtn.addEventListener('click', showStudentAuth);
 
 goRegister.addEventListener('click', () => showAdminAuth('register'));
@@ -211,70 +203,149 @@ backFromStudent.addEventListener('click', showHome);
 
 
 /* ============================================================
-   5. ADMIN AUTH — LOGIN
+   5. ADMIN AUTH: LOGIN
    ============================================================ */
-loginForm.addEventListener('submit', (e) => {
+loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  setBusy(loginForm, true);
 
   const email    = document.getElementById('loginEmail').value.trim().toLowerCase();
   const password = document.getElementById('loginPassword').value;
 
-  const user = APP.users.find(
-    u => u.email.toLowerCase() === email && u.password === password
-  );
+  const { error } = await sb.auth.signInWithPassword({ email, password });
 
-  if (!user) {
-    showAlert(loginError, '❌ Invalid email or password. Please try again.');
+  if (error) {
+    showAlert(loginError, '❌ ' + error.message);
+    setBusy(loginForm, false);
     return;
   }
 
-  APP.currentUser = user;
-  loginError.classList.remove('show');
-  loginForm.reset();
-
-  showDashboard();
+  const ok = await enterDashboard();
+  if (ok) loginForm.reset();
+  setBusy(loginForm, false);
 });
+
+/**
+ * Loads the signed-in user's profile, checks approval, then shows the
+ * dashboard. Returns true on success.
+ */
+async function enterDashboard() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return false;
+
+  const { data: profile, error } = await sb
+    .from('profiles')
+    .select('name, role, approved')
+    .eq('id', user.id)
+    .single();
+
+  if (error || !profile) {
+    await sb.auth.signOut();
+    showAdminAuth('login');
+    showAlert(loginError, '❌ Could not load your profile. Please contact an administrator.');
+    return false;
+  }
+
+  if (!profile.approved) {
+    await sb.auth.signOut();
+    showAdminAuth('login');
+    showAlert(loginError, '⏳ Your account is awaiting approval by an administrator.', 6000);
+    return false;
+  }
+
+  APP.currentUser = { id: user.id, email: user.email, name: profile.name, role: profile.role };
+  showDashboard();
+  await loadStudents();
+  return true;
+}
 
 
 /* ============================================================
-   6. ADMIN AUTH — REGISTER
+   6. ADMIN AUTH: REGISTER
    ============================================================ */
-registerForm.addEventListener('submit', (e) => {
+registerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  setBusy(registerForm, true);
 
-  const name     = document.getElementById('regName').value.trim();
-  const email    = document.getElementById('regEmail').value.trim().toLowerCase();
-  const role     = document.getElementById('regRole').value;
-  const password = document.getElementById('regPassword').value;
-  const confirm  = document.getElementById('regConfirm').value;
+  const name      = document.getElementById('regName').value.trim();
+  const email     = document.getElementById('regEmail').value.trim().toLowerCase();
+  const role      = document.getElementById('regRole').value;
+  const password  = document.getElementById('regPassword').value;
+  const confirmPw = document.getElementById('regConfirm').value;
 
-  if (password !== confirm) {
+  if (password !== confirmPw) {
     showAlert(registerError, '❌ Passwords do not match.');
+    setBusy(registerForm, false);
     return;
   }
 
-  if (APP.users.some(u => u.email.toLowerCase() === email)) {
-    showAlert(registerError, '❌ An account with this email already exists.');
+  // name + role are picked up by a database trigger that creates the profile
+  const { error } = await sb.auth.signUp({
+    email,
+    password,
+    options: { data: { name, role } }
+  });
+
+  if (error) {
+    showAlert(registerError, '❌ ' + error.message);
+    setBusy(registerForm, false);
     return;
   }
 
-  APP.users.push({ name, email, password, role });
+  // If email confirmation is off, signUp may log the user in; sign out so
+  // they have to be approved first.
+  await sb.auth.signOut();
 
   registerError.classList.remove('show');
-  showAlert(registerSuccess, '✅ Account created successfully! You can now sign in.');
-
+  showAlert(
+    registerSuccess,
+    '✅ Account created. Confirm your email if asked, then wait for an administrator to approve it before signing in.',
+    7000
+  );
   registerForm.reset();
+  setBusy(registerForm, false);
 
   setTimeout(() => {
     showAdminAuth('login');
     document.getElementById('loginEmail').value = email;
-  }, 1800);
+  }, 4500);
 });
 
 
 /* ============================================================
-   7. ADMIN DASHBOARD — RENDERING
+   7. ADMIN DASHBOARD: DATA + RENDERING
    ============================================================ */
+async function loadStudents() {
+  const [studentsRes, attendanceRes] = await Promise.all([
+    sb.from('students')
+      .select('id, student_id, name, class_name')
+      .order('name', { ascending: true }),
+    sb.from('attendance')
+      .select('student_uuid, present')
+      .eq('date', todayStr())
+  ]);
+
+  if (studentsRes.error || attendanceRes.error) {
+    const msg = (studentsRes.error || attendanceRes.error).message;
+    showAlert(addError, '❌ Could not load data: ' + msg);
+    return;
+  }
+
+  const presentToday = new Map(
+    attendanceRes.data.map(a => [a.student_uuid, a.present])
+  );
+
+  APP.students = studentsRes.data.map(r => ({
+    uuid: r.id,
+    id: r.student_id,
+    name: r.name,
+    className: r.class_name,
+    present: presentToday.get(r.id) === true   // not marked yet = absent
+  }));
+
+  renderDashboard();
+}
+
 function renderDashboard() {
   renderStats();
   renderStudentTable();
@@ -322,17 +393,17 @@ function renderStudentTable() {
     html += `
       <tr>
         <td>
-          <span class="avatar-sm">${getInitials(student.name)}</span>
+          <span class="avatar-sm">${escapeHtml(getInitials(student.name))}</span>
           ${escapeHtml(student.name)}
         </td>
         <td>${escapeHtml(student.id)}</td>
         <td>${escapeHtml(student.className)}</td>
         <td><span class="badge ${statusClass}">${statusText}</span></td>
         <td>
-          <button class="btn-toggle" data-action="toggle" data-id="${student.id}">
+          <button class="btn-toggle" data-action="toggle" data-uuid="${student.uuid}">
             ${actionLabel}
           </button>
-          <button class="btn-remove" data-action="remove" data-id="${student.id}" title="Remove student">
+          <button class="btn-remove" data-action="remove" data-uuid="${student.uuid}" title="Remove student">
             🗑️
           </button>
         </td>
@@ -344,38 +415,54 @@ function renderStudentTable() {
 
 
 /* ============================================================
-   8. ADMIN DASHBOARD — STUDENT TABLE ACTIONS
+   8. ADMIN DASHBOARD: STUDENT TABLE ACTIONS
    ============================================================ */
-studentTableBody.addEventListener('click', (e) => {
+studentTableBody.addEventListener('click', async (e) => {
   const btn = e.target.closest('button');
   if (!btn) return;
 
-  const action    = btn.dataset.action;
-  const studentId = btn.dataset.id;
+  const student = APP.students.find(s => s.uuid === btn.dataset.uuid);
+  if (!student) return;
 
-  if (action === 'toggle') {
-    const student = APP.students.find(s => s.id === studentId);
-    if (student) {
-      student.present = !student.present;
-      renderDashboard();
+  if (btn.dataset.action === 'toggle') {
+    btn.disabled = true;
+    const newValue = !student.present;
+
+    // One attendance row per student per day; upsert creates or updates it
+    const { error } = await sb.from('attendance').upsert(
+      { student_uuid: student.uuid, date: todayStr(), present: newValue },
+      { onConflict: 'student_uuid,date' }
+    );
+
+    if (error) {
+      showAlert(addError, '❌ ' + error.message);
+      btn.disabled = false;
+      return;
     }
+    student.present = newValue;
+    renderDashboard();
   }
 
-  if (action === 'remove') {
-    const student = APP.students.find(s => s.id === studentId);
-    if (student && confirm(`Remove "${student.name}" from the register?`)) {
-      APP.students = APP.students.filter(s => s.id !== studentId);
-      renderDashboard();
+  if (btn.dataset.action === 'remove') {
+    if (!confirm(`Remove "${student.name}" from the register? Their attendance history will be deleted too.`)) return;
+
+    const { error } = await sb.from('students').delete().eq('id', student.uuid);
+    if (error) {
+      showAlert(addError, '❌ ' + error.message);
+      return;
     }
+    APP.students = APP.students.filter(s => s.uuid !== student.uuid);
+    renderDashboard();
   }
 });
 
 
 /* ============================================================
-   9. ADMIN DASHBOARD — ADD / SEARCH / LOGOUT
+   9. ADMIN DASHBOARD: ADD / SEARCH / LOGOUT
    ============================================================ */
-addStudentForm.addEventListener('submit', (e) => {
+addStudentForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  setBusy(addStudentForm, true);
 
   const name      = document.getElementById('studentName').value.trim();
   const id        = document.getElementById('studentId').value.trim().toUpperCase();
@@ -383,26 +470,30 @@ addStudentForm.addEventListener('submit', (e) => {
 
   if (!name || !id || !className) {
     showAlert(addError, '❌ All fields are required.');
+    setBusy(addStudentForm, false);
     return;
   }
 
-  if (APP.students.some(s => s.id === id)) {
-    showAlert(addError, `❌ A student with ID "${id}" already exists.`);
-    return;
-  }
-
-  APP.students.push({
-    id,
+  const { error } = await sb.from('students').insert({
+    student_id: id,
     name,
-    className,
-    present: false
+    class_name: className
   });
+
+  if (error) {
+    const msg = error.code === '23505'
+      ? `A student with ID "${id}" already exists.`
+      : error.message;
+    showAlert(addError, '❌ ' + msg);
+    setBusy(addStudentForm, false);
+    return;
+  }
 
   addError.classList.remove('show');
   showAlert(addSuccess, `✅ "${name}" added successfully.`);
   addStudentForm.reset();
-
-  renderDashboard();
+  await loadStudents();
+  setBusy(addStudentForm, false);
 });
 
 studentSearch.addEventListener('input', (e) => {
@@ -410,36 +501,47 @@ studentSearch.addEventListener('input', (e) => {
   renderStudentTable();
 });
 
-logoutBtn.addEventListener('click', () => {
+logoutBtn.addEventListener('click', async () => {
+  await sb.auth.signOut();
   APP.currentUser = null;
+  APP.students = [];
   showHome();
 });
 
 
 /* ============================================================
-   10. STUDENT AUTH — LOGIN / LOGOUT
+   10. STUDENT AUTH: LOGIN / LOGOUT
+   The student never touches the tables directly. A database
+   function checks the school code and returns only their record.
    ============================================================ */
-studentLoginForm.addEventListener('submit', (e) => {
+studentLoginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  setBusy(studentLoginForm, true);
 
-  const id   = document.getElementById('studentLoginId').value.trim().toUpperCase();
+  const id   = document.getElementById('studentLoginId').value.trim();
   const code = document.getElementById('studentLoginCode').value.trim();
 
-  if (code !== APP.schoolCode) {
-    showAlert(studentLoginError, '❌ Invalid school code.');
+  const { data, error } = await sb.rpc('get_student_attendance', {
+    p_student_id: id,
+    p_code: code,
+    p_today: todayStr()
+  });
+
+  setBusy(studentLoginForm, false);
+
+  if (error) {
+    showAlert(studentLoginError, '❌ ' + error.message);
     return;
   }
 
-  const student = APP.students.find(s => s.id.toUpperCase() === id);
-  if (!student) {
-    showAlert(studentLoginError, '❌ No student found with that ID.');
+  if (!data) {
+    showAlert(studentLoginError, '❌ Invalid Student ID or school code.');
     return;
   }
 
   studentLoginForm.reset();
   studentLoginError.classList.remove('show');
-
-  showStudentPortal(student);
+  showStudentPortal(data);
 });
 
 studentLogoutBtn.addEventListener('click', () => {
@@ -449,15 +551,15 @@ studentLogoutBtn.addEventListener('click', () => {
 
 
 /* ============================================================
-   11. STUDENT PORTAL — RENDERING
+   11. STUDENT PORTAL: RENDERING
    ============================================================ */
-function renderStudentPortal(student) {
-  spAvatar.textContent = getInitials(student.name);
-  spName.textContent   = student.name;
-  spId.textContent     = student.id;
-  spClass.textContent  = student.className;
+function renderStudentPortal(d) {
+  spAvatar.textContent = getInitials(d.name);
+  spName.textContent   = d.name;
+  spId.textContent     = d.student_id;
+  spClass.textContent  = d.class_name;
 
-  if (student.present) {
+  if (d.today_present) {
     spStatusBox.classList.add('present');
     spStatusBox.classList.remove('absent');
     spStatusValue.textContent = 'Present';
@@ -467,16 +569,17 @@ function renderStudentPortal(student) {
     spStatusValue.textContent = 'Absent';
   }
 
-  // Demo stats (real app would pull historical data)
-  spTotalDays.textContent   = 30;
-  spDaysPresent.textContent = student.present ? 27 : 26;
-  spPercentage.textContent  = student.present ? '90%' : '87%';
+  spTotalDays.textContent   = d.total_days;
+  spDaysPresent.textContent = d.days_present;
+  spPercentage.textContent  = d.total_days === 0
+    ? '—'
+    : Math.round((d.days_present / d.total_days) * 100) + '%';
 }
 
 
 /* ============================================================
    12. INIT
    ============================================================ */
-// Pre-fill demo credentials on the admin login form
-document.getElementById('loginEmail').value    = 'admin@school.edu';
-document.getElementById('loginPassword').value = 'admin123';
+// Always start on the home page. If an approved admin session is
+// still valid, the "Admin Portal" button takes them straight in.
+showHome();
